@@ -46,10 +46,19 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from sklearn.neighbors import NearestNeighbors
 
-def extract_features(img_arr, model):
-    expanded_img_array = np.expand_dims(img_arr, axis=0)
-    preprocessed_img = preprocess_input(expanded_img_array)
-    features = model.predict(preprocessed_img)
+# def extract_features(img_arr, model):
+    # expanded_img_array = np.expand_dims(img_arr, axis=0)
+    # preprocessed_img = preprocess_input(expanded_img_array)
+    # features = model.predict(preprocessed_img)
+    # flattened_features = features.flatten()
+    # normalized_features = flattened_features / norm(flattened_features)
+    # return normalized_features
+
+def extract_features(img_array, model):
+    x_train = np.asarray([img_array])
+    x_train = x_train.astype('float32') / 255.
+    features = model.predict(x_train)
+    # features = features.numpy()
     flattened_features = features.flatten()
     normalized_features = flattened_features / norm(flattened_features)
     return normalized_features
@@ -58,18 +67,18 @@ def url_to_image(url):
     resp = urllib.request.urlopen(url)
     image = np.asarray(bytearray(resp.read()), dtype="uint8")
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-    resized_img = cv2.resize(image,(224,224))
+    resized_img = cv2.resize(image,(128,128))
     img = cv2.cvtColor(resized_img,cv2.COLOR_BGR2RGB)
     return img
 
 app = Flask(__name__)
 CORS(app, support_credentials=True)
 
-model = ResNet50(weights='imagenet', include_top=False,
-                 input_shape=(224, 224, 3))
-
-feature_list = pickle.load(open('features-Material-resnet_new_1.pkl', 'rb'))
-indexes = pickle.load(open('index.pkl', 'rb'))
+feature_model = tf.keras.models.load_model('Model_final_Dense_128.h5')
+model = tf.keras.Model(inputs=feature_model.input,outputs=feature_model.get_layer("Feature_Layer").output)
+# model = ResNet50(weights='imagenet', include_top=False,input_shape=(224, 224, 3))
+feature_list = pickle.load(open('features_custom.pkl', 'rb'))
+indexes = pickle.load(open('index_128.pkl', 'rb'))
 neighbors = NearestNeighbors(n_neighbors=15, algorithm='brute',metric='euclidean').fit(feature_list)
 
 with open('Master Sheet_Tiles.json') as json_file:
